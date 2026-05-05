@@ -1,16 +1,38 @@
 import { Ionicons } from '@expo/vector-icons';
-import NetInfo from '@react-native-community/netinfo';
-import React, { memo } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import React, { memo, useState } from 'react';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 
 interface OfflineBannerProps {
     onRetry?: () => void;
 }
 
+// Lightweight connectivity check
+async function checkConnectivity(): Promise<boolean> {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch('https://www.google.com', {
+            method: 'HEAD',
+            signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        return res.ok;
+    } catch {
+        return false;
+    }
+}
+
 function OfflineBannerComponent({ onRetry }: OfflineBannerProps) {
+    const [checking, setChecking] = useState(false);
+
     const handleRetry = async () => {
-        const state = await NetInfo.fetch();
-        if (state.isConnected && onRetry) {
+        if (!onRetry) return;
+
+        setChecking(true);
+        const isConnected = await checkConnectivity();
+        setChecking(false);
+
+        if (isConnected) {
             onRetry();
         }
     };
@@ -24,9 +46,14 @@ function OfflineBannerComponent({ onRetry }: OfflineBannerProps) {
             {onRetry && (
                 <TouchableOpacity
                     onPress={handleRetry}
+                    disabled={checking}
                     className="bg-white/20 px-3 py-1 rounded-md"
                 >
-                    <Text className="text-white text-xs font-semibold">Retry</Text>
+                    {checking ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                        <Text className="text-white text-xs font-semibold">Retry</Text>
+                    )}
                 </TouchableOpacity>
             )}
         </View>
