@@ -33,7 +33,8 @@ export default function CourseWebViewScreen() {
 
     const webViewRef = useRef<WebView>(null);
     const [webLoading, setWebLoading] = useState(true);
-    const [webError, setWebError] = useState(false);
+    const [webError, setWebError] = useState<string | null>(null);
+    const [retryCount, setRetryCount] = useState(0);
 
     const course: Course | null = (() => {
         try { return courseData ? JSON.parse(courseData) : null; } catch { return null; }
@@ -42,7 +43,19 @@ export default function CourseWebViewScreen() {
     if (!course) {
         return (
             <View style={{ flex: 1, backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: c.textMuted }}>Course data unavailable.</Text>
+                <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
+                <Text style={{ color: c.textPrimary, fontWeight: '700', fontSize: 16, marginTop: 12 }}>
+                    Course data unavailable
+                </Text>
+                <Text style={{ color: c.textMuted, fontSize: 14, marginTop: 4 }}>
+                    Unable to load course information
+                </Text>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={{ marginTop: 20, backgroundColor: '#6366f1', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 }}
+                >
+                    <Text style={{ color: '#fff', fontWeight: '600' }}>Go Back</Text>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -88,6 +101,35 @@ export default function CourseWebViewScreen() {
         }
     };
 
+    const handleWebViewError = (event: WebViewErrorEvent) => {
+        const { nativeEvent } = event;
+        console.error('WebView error:', nativeEvent);
+
+        let errorMessage = 'Failed to load content';
+
+        if (nativeEvent.description) {
+            if (nativeEvent.description.includes('net::ERR_INTERNET_DISCONNECTED')) {
+                errorMessage = 'No internet connection';
+            } else if (nativeEvent.description.includes('net::ERR_TIMED_OUT')) {
+                errorMessage = 'Request timed out';
+            } else if (nativeEvent.description.includes('net::ERR_NAME_NOT_RESOLVED')) {
+                errorMessage = 'Unable to resolve server';
+            } else {
+                errorMessage = nativeEvent.description;
+            }
+        }
+
+        setWebError(errorMessage);
+        setWebLoading(false);
+    };
+
+    const handleRetry = () => {
+        setWebError(null);
+        setWebLoading(true);
+        setRetryCount(prev => prev + 1);
+        webViewRef.current?.reload();
+    };
+
     const html = buildCourseHtml(course, isDark);
 
     return (
@@ -120,7 +162,7 @@ export default function CourseWebViewScreen() {
                 </View>
                 {/* Reload button */}
                 <TouchableOpacity
-                    onPress={() => webViewRef.current?.reload()}
+                    onPress={handleRetry}
                     style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: c.iconBg, alignItems: 'center', justifyContent: 'center' }}
                 >
                     <Ionicons name="refresh-outline" size={18} color={c.iconColor} />
@@ -131,19 +173,62 @@ export default function CourseWebViewScreen() {
             <View style={{ flex: 1 }}>
                 {webError ? (
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-                        <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
-                        <Text style={{ color: c.textPrimary, fontWeight: '700', fontSize: 16, marginTop: 12 }}>
-                            Failed to load content
+                        <View style={{
+                            width: 80,
+                            height: 80,
+                            borderRadius: 40,
+                            backgroundColor: '#fef2f2',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: 20,
+                        }}>
+                            <Ionicons name="alert-circle-outline" size={40} color="#ef4444" />
+                        </View>
+                        <Text style={{ color: c.textPrimary, fontWeight: '700', fontSize: 18, textAlign: 'center' }}>
+                            Failed to Load Content
                         </Text>
-                        <TouchableOpacity
-                            onPress={() => { setWebError(false); webViewRef.current?.reload(); }}
-                            style={{ marginTop: 16, backgroundColor: '#6366f1', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 12 }}
-                        >
-                            <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
-                        </TouchableOpacity>
+                        <Text style={{ color: c.textMuted, fontSize: 14, marginTop: 8, textAlign: 'center', lineHeight: 20 }}>
+                            {webError}
+                        </Text>
+                        {retryCount > 0 && (
+                            <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>
+                                Retry attempt: {retryCount}
+                            </Text>
+                        )}
+                        <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+                            <TouchableOpacity
+                                onPress={() => router.back()}
+                                style={{
+                                    backgroundColor: c.bgCard,
+                                    paddingHorizontal: 20,
+                                    paddingVertical: 12,
+                                    borderRadius: 12,
+                                    borderWidth: 1,
+                                    borderColor: c.borderLight,
+                                }}
+                            >
+                                <Text style={{ color: c.textPrimary, fontWeight: '600' }}>Go Back</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleRetry}
+                                style={{
+                                    backgroundColor: '#6366f1',
+                                    paddingHorizontal: 20,
+                                    paddingVertical: 12,
+                                    borderRadius: 12,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                }}
+                            >
+                                <Ionicons name="refresh-outline" size={16} color="#fff" />
+                                <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 ) : (
                     <WebView
+                        key={retryCount} // Force remount on retry
                         ref={webViewRef}
                         // Load the locally generated HTML — no network request needed
                         source={{ html, baseUrl: '' }}
@@ -154,7 +239,15 @@ export default function CourseWebViewScreen() {
                             const js = await buildInjection();
                             webViewRef.current?.injectJavaScript(js);
                         }}
-                        onError={() => setWebError(true)}
+                        onLoadStart={() => setWebLoading(true)}
+                        onError={handleWebViewError}
+                        onHttpError={(syntheticEvent) => {
+                            const { nativeEvent } = syntheticEvent;
+                            console.warn('HTTP error:', nativeEvent.statusCode);
+                            if (nativeEvent.statusCode >= 400) {
+                                setWebError(`HTTP Error: ${nativeEvent.statusCode}`);
+                            }
+                        }}
                         onMessage={handleMessage}
                         // Pass app metadata to the WebView via custom HTTP headers
                         // (visible in the WebView's navigator.userAgent context)
@@ -168,6 +261,13 @@ export default function CourseWebViewScreen() {
                         javaScriptEnabled
                         domStorageEnabled
                         showsVerticalScrollIndicator={false}
+                        // Enable better error handling
+                        startInLoadingState
+                        renderError={(errorName) => (
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ color: c.textMuted }}>Error: {errorName}</Text>
+                            </View>
+                        )}
                     />
                 )}
 

@@ -186,24 +186,7 @@ export default function HomeScreen() {
 
       {/* Error full screen */}
       {error && courses.length === 0 && !loading && (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#fef2f2', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-            <Ionicons name="cloud-offline-outline" size={36} color="#ef4444" />
-          </View>
-          <Text style={{ color: c.textPrimary, fontWeight: '700', fontSize: 18, textAlign: 'center' }}>
-            Something went wrong
-          </Text>
-          <Text style={{ color: c.textMuted, fontSize: 14, textAlign: 'center', marginTop: 8, marginBottom: 24 }}>
-            {error}
-          </Text>
-          <TouchableOpacity
-            onPress={retry}
-            style={{ backgroundColor: '#6366f1', paddingHorizontal: 32, paddingVertical: 12, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}
-          >
-            <Ionicons name="refresh-outline" size={18} color="#fff" />
-            <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorDisplay error={{ message: error }} onRetry={retry} />
       )}
 
       {/* Skeleton */}

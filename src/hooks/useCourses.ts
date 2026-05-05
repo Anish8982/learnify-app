@@ -65,15 +65,21 @@ export function useCourses(): UseCoursesReturn {
             setLastOpened(opened);
             setLoading(false);
             setRefreshing(false);
-        } catch {
+            setError(null);
+        } catch (err) {
             if (!isMounted.current) return;
+
+            console.error('Failed to load courses:', err);
+
             setLoading(false);
             setRefreshing(false);
+
+            // Only show error if we don't have cached data
             if (rawCourses.length === 0) {
-                setError('Failed to load courses. Please check your connection.');
+                setError(getErrorMessage(err));
             }
         }
-    }, []);
+    }, [rawCourses.length]);
 
     useEffect(() => { loadCourses(false); }, [loadCourses]);
 
