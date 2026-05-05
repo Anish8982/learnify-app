@@ -1,3 +1,0 @@
-@echo off
-echo Clearing Metro cache and restarting...
-npx expo start -c
