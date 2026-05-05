@@ -102,19 +102,32 @@ export default function EditProfileScreen() {
         try {
             const uri = source === 'camera' ? await pickFromCamera() : await pickFromLibrary();
             if (uri) {
-                setAvatarUri(uri);
+                // Update avatar in storage
+                const permanentUri = await updateAvatar(uri);
+                // Update local state
+                setAvatarUri(permanentUri);
                 setAvatarKey(k => k + 1);
-                await updateAvatar(uri);
+
+                Alert.alert('Success', 'Profile photo updated successfully!');
             }
+        } catch (error) {
+            console.error('Failed to update avatar:', error);
+            Alert.alert('Error', 'Failed to update profile photo. Please try again.');
         } finally {
             setAvatarLoading(false);
         }
     };
 
     const handleRemoveAvatar = async () => {
-        setAvatarUri(null);
-        setAvatarKey(k => k + 1);
-        await updateAvatar('');
+        try {
+            setAvatarUri(null);
+            setAvatarKey(k => k + 1);
+            await updateAvatar('');
+            Alert.alert('Success', 'Profile photo removed successfully!');
+        } catch (error) {
+            console.error('Failed to remove avatar:', error);
+            Alert.alert('Error', 'Failed to remove profile photo. Please try again.');
+        }
     };
 
     const handleSave = async () => {

@@ -29,6 +29,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   clearRegistering: () => void;
   updateAvatar: (uri: string) => Promise<void>;
+  refreshAvatar: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -153,18 +154,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateAvatar = async (uri: string): Promise<void> => {
-    if (uri) {
-      await avatarStorage.save(uri);
-      setLocalAvatar(uri);
-    } else {
-      await avatarStorage.remove();
-      setLocalAvatar(null);
+    try {
+      if (uri) {
+        // Save to permanent storage and get the permanent URI
+        const permanentUri = await avatarStorage.save(uri);
+        setLocalAvatar(permanentUri);
+      } else {
+        await avatarStorage.remove();
+        setLocalAvatar(null);
+      }
+    } catch (error) {
+      console.error('Failed to update avatar:', error);
+      throw error;
+    }
+  };
+
+  // Function to refresh avatar from storage (useful after navigation)
+  const refreshAvatar = async () => {
+    try {
+      const avatar = await avatarStorage.get();
+      setLocalAvatar(avatar);
+    } catch (error) {
+      console.error('Failed to refresh avatar:', error);
     }
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, firebaseUser, localAvatar, isLoading, isRegistering, login, register, loginWithGoogle, clearRegistering, logout, updateAvatar }}
+      value={{ user, firebaseUser, localAvatar, isLoading, isRegistering, login, register, loginWithGoogle, clearRegistering, logout, updateAvatar, refreshAvatar }}
     >
       {children}
     </AuthContext.Provider>

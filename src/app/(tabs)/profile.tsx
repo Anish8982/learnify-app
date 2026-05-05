@@ -33,11 +33,20 @@ const MENU_ITEMS = [
 ];
 
 export default function ProfileScreen() {
-    const { user, logout, localAvatar } = useAuth();
+    const { user, logout, localAvatar, refreshAvatar } = useAuth();
     const router = useRouter();
     const c = useThemeColors();
     const [enrolledCount, setEnrolledCount] = useState(0);
     const [bookmarkCount, setBookmarkCount] = useState(0);
+    const [avatarKey, setAvatarKey] = useState(0);
+
+    // Refresh avatar when screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            refreshAvatar();
+            setAvatarKey(prev => prev + 1); // Force image re-render
+        }, [refreshAvatar])
+    );
 
     useEffect(() => {
         const loadStats = async () => {
@@ -81,7 +90,12 @@ export default function ProfileScreen() {
                 <View style={{ alignItems: 'center', marginBottom: 16 }}>
                     <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: '#6366f1', alignItems: 'center', justifyContent: 'center', borderWidth: 4, borderColor: 'rgba(165,180,252,0.3)', overflow: 'hidden' }}>
                         {localAvatar ? (
-                            <Image source={{ uri: localAvatar }} style={{ width: 96, height: 96 }} resizeMode="cover" />
+                            <Image
+                                key={avatarKey}
+                                source={{ uri: localAvatar }}
+                                style={{ width: 96, height: 96 }}
+                                resizeMode="cover"
+                            />
                         ) : (
                             <Text style={{ color: '#fff', fontSize: 32, fontWeight: '700' }}>{initials}</Text>
                         )}
